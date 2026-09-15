@@ -198,6 +198,12 @@ ninfer_add_test(ninfer_request_log_test
 ninfer_add_test(ninfer_host_timing_test
   SOURCES test_host_timing.cpp
   LIBRARIES ninfer_core)
+ninfer_add_test(ninfer_jinja_test
+  SOURCES text/test_jinja.cpp
+  LIBRARIES ninfer_jinja)
+add_test(NAME ninfer_chat_templates_test
+  COMMAND ${Python3_EXECUTABLE} -B ${PROJECT_SOURCE_DIR}/tests/text/test_chat_templates.py
+          $<TARGET_FILE:ninfer_jinja_test>)
 ninfer_add_test(ninfer_http_error_handler_test
   SOURCES test_http_error_handler.cpp
   LIBRARIES ninfer_serve)

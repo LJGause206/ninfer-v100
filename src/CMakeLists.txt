@@ -402,6 +402,11 @@ add_library(ninfer_text STATIC
   ${PROJECT_SOURCE_DIR}/third_party/utf8proc/utf8proc.c)
 ninfer_internal_includes(ninfer_text)
 
+# Language evaluation reuses the engine's Unicode and JSON dependencies.
+target_sources(ninfer_jinja PRIVATE text/jinja.cpp)
+ninfer_internal_includes(ninfer_jinja)
+target_link_libraries(ninfer_jinja PRIVATE ninfer_text)
+
 # Immutable model data and cold loading, independently buildable from Program and Engine.
 add_library(ninfer_model_loading STATIC
   models/registry.cpp
@@ -430,6 +435,7 @@ add_library(ninfer_model_runtime STATIC
   models/qwen3_5/frontend/frontend.cpp
   models/qwen3_5/frontend/output_session.cpp
   models/qwen3_5/frontend/chat_template.cpp
+  models/qwen3_5/frontend/prompt_layout.cpp
   models/qwen3_5/frontend/digest.cpp
   models/qwen3_5/frontend/processor.cpp
   models/qwen3_5/frontend/media_cache.cpp
@@ -471,7 +477,7 @@ add_library(ninfer_model_runtime STATIC
 ninfer_internal_includes(ninfer_model_runtime)
 target_link_libraries(ninfer_model_runtime
   PUBLIC ninfer_model_loading ninfer_ops ninfer_runtime_support
-  PRIVATE ninfer_media_decode)
+  PRIVATE ninfer_media_decode ninfer_jinja)
 
 if(NINFER_BUILD_MEDIA_ACQUIRE)
   # Product-only path/data/HTTP acquisition. No target package links this library.
