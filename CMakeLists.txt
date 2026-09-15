@@ -114,6 +114,9 @@ if(NINFER_BUILD_APPS OR BUILD_TESTING)
   add_subdirectory(third_party/spdlog)
 endif()
 
+# Source base for the custom-template frontend; consumers link it explicitly.
+add_subdirectory(third_party/llama-jinja EXCLUDE_FROM_ALL)
+
 # --- Subdirectories ----------------------------------------------------------
 add_subdirectory(src)
 if(NINFER_BUILD_APPS)
