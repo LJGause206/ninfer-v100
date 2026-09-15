@@ -5,11 +5,29 @@ can reuse an official conversion, change selected layers or projections, combine
 your own conversion method. The artifact contains the resulting configuration, encoded weights,
 logical bindings and frontend resources.
 
-Run the commands below from the repository root in a Python 3.11 environment with PyTorch and
-NumPy. Conversion uses CUDA by default; `--device cpu` selects CPU conversion. The input paths are
-placeholders for your local checkpoint directories.
+Run the commands below from the repository root.
+
+## Upgrade an existing v2 artifact
+
+The offline upgrade tool supports the official Qwen3.6/3.8-27B groupwise-int and NVFP4 artifacts,
+and Qwen3.6-35B-A3B groupwise-int. Update your checkout to the current `master` and
+[rebuild NInfer](../README.md#quick-start), then run with Python 3.11:
+
+```bash
+python3 tools/upgrade_ninfer_v2_to_v3.py \
+  models/qwen3_8_27b_nvfp4.ninfer \
+  models/qwen3_8_27b_nvfp4.v3.ninfer
+```
+
+The output must use a new path. After upgrading, use it directly or rename it to replace the
+original file. Stored weight values and formats are preserved. Published SHA-256 checksums apply
+only to downloaded files.
 
 ## Start with an official recipe
+
+Source-weight conversion requires a Python 3.11 environment with PyTorch and NumPy. It uses CUDA
+by default; `--device cpu` selects CPU conversion. The input paths below are placeholders for your
+local checkpoint directories.
 
 For Qwen3.6-27B floating-point source weights:
 

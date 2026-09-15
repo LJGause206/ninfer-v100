@@ -97,6 +97,10 @@ QPN prepacking work was inspired by
 The 35B-A3B production DFlash round at a 2,048-token context uses K=3: **125.9 tok/s** and 3.8
 mean output tokens per round over ten measured rounds after two warmups.
 
+The current engine requires v3 artifacts. Existing official v2 downloads can be
+[upgraded locally](docs/weight-conversion.md#upgrade-an-existing-v2-artifact) without downloading
+the weights again.
+
 ## Quick start
 
 NInfer requires 64-bit Linux, a Tesla V100 with CUDA Toolkit 12.8, CMake 3.28 or newer, a C++20
