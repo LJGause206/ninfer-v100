@@ -180,7 +180,7 @@ struct GenerationRequest {
     bool stop_strings_apply_to_reasoning = false;
     int max_tokens                       = 0; // resolved budget; zero means immediate output limit
     std::optional<bool> enable_thinking;      // unset => use the server default
-    std::optional<std::uint32_t> thinking_budget;
+    std::optional<std::uint32_t> thinking_budget; // unset => server default; 0 => no cap
     std::optional<RequestedReasoningEffort> reasoning_effort;
     std::optional<bool> preserve_thinking;
     ninfer::PromptContinuationMode continuation = ninfer::PromptContinuationMode::NewAssistantTurn;

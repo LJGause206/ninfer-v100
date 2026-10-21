@@ -559,6 +559,55 @@ int test_reasoning_and_extensions() {
     failures +=
         check(api_error([&] { (void)parse(body); }).code == "mm_processor_kwargs_not_supported",
               "non-empty media processor kwargs rejected");
+
+    body                            = base_request();
+    body["reasoning_budget_tokens"] = 4096;
+    failures += check(options(parse(body).generation).execution.thinking.budget ==
+                          std::optional<std::uint32_t>{4096U},
+                      "per-request thinking budget reaches the Engine");
+    body["thinking_budget_tokens"] = 4096;
+    failures +=
+        check(parse(body).generation.thinking_budget == 4096U, "equal budget aliases accepted");
+    body["thinking_budget_tokens"] = 2048;
+    failures += check(api_error([&] { (void)parse(body); }).code == "conflicting_thinking_budget",
+                      "conflicting budget aliases rejected");
+    for (const Json& invalid : {Json(-1), Json("4096"), Json(1.5)}) {
+        body                            = base_request();
+        body["reasoning_budget_tokens"] = invalid;
+        failures +=
+            check(api_error([&] { (void)parse(body); }).status == 400, "invalid budget rejected");
+    }
+    body                           = base_request();
+    body["thinking_budget_tokens"] = -1;
+    failures += check(api_error([&] { (void)parse(body); }).param == "thinking_budget_tokens",
+                      "an invalid budget alias is named in the error");
+    body["thinking_budget_tokens"] = 1024;
+    failures +=
+        check(parse(body).generation.thinking_budget == 1024U, "budget alias accepted alone");
+    body                            = base_request();
+    body["reasoning_budget_tokens"] = 0;
+    ServeOptions server;
+    server.default_thinking_budget = 512;
+    const GenerationRequest zero   = parse(body).generation;
+    failures += check(!to_request_options(zero, server, semantics(zero), true)
+                           .execution.thinking.budget.has_value(),
+                      "zero overrides the server default with no budget");
+    body                             = base_request();
+    body["reasoning_budget_tokens"]  = 4096;
+    const GenerationRequest positive = parse(body).generation;
+    failures += check(
+        to_request_options(positive, server, semantics(positive), true).execution.thinking.budget ==
+            std::optional<std::uint32_t>{4096U},
+        "a positive request budget replaces the server default");
+    body["reasoning_budget_tokens"] = 0;
+    body["thinking_budget_tokens"]  = 4096;
+    failures += check(api_error([&] { (void)parse(body); }).code == "conflicting_thinking_budget",
+                      "a zero budget conflicts with a positive alias");
+    body                            = base_request();
+    body["reasoning_effort"]        = "none";
+    body["reasoning_budget_tokens"] = 4096;
+    failures += check(!options(parse(body).generation).execution.thinking.budget.has_value(),
+                      "a budget has no effect when thinking is off");
     return failures;
 }
 

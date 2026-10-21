@@ -117,6 +117,7 @@ The endpoint supports:
   parallel calls enabled, assistant tool-call history, tool-result messages, and legacy
   function-call history;
 - the top-level `reasoning_effort` field;
+- a per-request thinking budget, `reasoning_budget_tokens` or its alias `thinking_budget_tokens`;
 - `enable_thinking` and `preserve_thinking`, either at top level or in
   `chat_template_kwargs`;
 - Assistant `reasoning_content` and `reasoning` history aliases.
@@ -194,15 +195,22 @@ not exposed by the loaded template returns HTTP 400 with code
 `reasoning_effort_not_supported` before prompt preparation.
 
 `--default-thinking-budget N` sets a positive process default for requests whose final resolved
-prompt semantics enable thinking. It does not add or reinterpret an HTTP request field: the
-existing `reasoning_effort` and `enable_thinking` inputs still decide whether thinking is enabled,
-and a request resolved to non-thinking receives no cap. `--no-thinking` may coexist with this
-option because a protocol request can explicitly enable thinking. Anthropic
-`thinking:{"type":"enabled","budget_tokens":N}` supplies a request-specific budget instead of
-this process default.
+prompt semantics enable thinking. The `reasoning_effort` and `enable_thinking` inputs still decide
+whether thinking is enabled, and a request resolved to non-thinking receives no cap. `--no-thinking`
+may coexist with this option because a protocol request can explicitly enable thinking. A
+request-specific budget replaces this process default for that request: Chat Completions
+`reasoning_budget_tokens` (or its alias `thinking_budget_tokens`), or Anthropic
+`thinking:{"type":"enabled","budget_tokens":N}`.
+
+The Chat Completions budget is a nonnegative integer. A positive value caps that request's
+model-origin thinking; `0` disables the cap for that request even when `--default-thinking-budget`
+is set. The budget does not enable thinking and has no effect on a request resolved to
+non-thinking. If both spellings are present they must carry the same value; different values
+return HTTP 400 with code `conflicting_thinking_budget`. Any other type or a negative value returns
+HTTP 400 naming the field.
 
 Add `--default-thinking-budget 512` to the startup command to cap model-origin thinking at 512
-tokens for every thinking-enabled request.
+tokens for every thinking-enabled request that does not set its own budget.
 
 At the cap boundary, Engine first honors a natural `</think>`, stop condition, cancellation, or
 total output/context limit. If thinking remains open, it commits Qwen's canonical early-close
@@ -781,7 +789,7 @@ The table lists executable defaults. The startup example selects a long-context 
 | `--draft-tokens N` | MTP `1..5`; DFlash/DFlash2 `1..15` | unset |
 | `--lm-head-draft` | optimized proposal head | off |
 | `--default-max-tokens N` | output limit when omitted by a request | `8192` |
-| `--default-thinking-budget N` | positive thinking cap inherited by thinking-enabled requests | unset |
+| `--default-thinking-budget N` | positive thinking cap for thinking-enabled requests without their own budget | unset |
 | `--vision` | enable media input and load Vision GPU allocations | off |
 | `--no-cuda-graph` | disable CUDA Graph decode | graphs on |
 | `--no-prefix-reuse` | disable compatible-prefix caching | prefix reuse on |

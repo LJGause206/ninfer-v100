@@ -299,8 +299,12 @@ ninfer::RequestOptions to_request_options(const GenerationRequest& request,
     options.execution.requested_output_tokens = static_cast<std::uint32_t>(request.max_tokens);
     options.execution.allow_prefix_reuse      = allow_prefix_reuse;
     if (semantics.enable_thinking) {
-        options.execution.thinking.budget =
-            request.thinking_budget ? request.thinking_budget : server.default_thinking_budget;
+        // A request budget replaces the server default; a request budget of zero means no cap.
+        if (!request.thinking_budget) {
+            options.execution.thinking.budget = server.default_thinking_budget;
+        } else if (*request.thinking_budget > 0) {
+            options.execution.thinking.budget = request.thinking_budget;
+        }
     }
     options.execution.sampling             = resolve_sampling_overrides(request.sampling, server);
     options.output.raw                     = false;

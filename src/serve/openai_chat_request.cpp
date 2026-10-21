@@ -849,6 +849,25 @@ void parse_reasoning_effort(const Json& body, GenerationRequest& output) {
     output.reasoning_effort = *parsed;
 }
 
+void parse_thinking_budget(const Json& body, GenerationRequest& output) {
+    // Both spellings name one request cap on model-origin thinking tokens. Zero is stored so that
+    // translation can let a request opt out of --default-thinking-budget.
+    auto read = [&](const char* key) {
+        const std::optional<int> value = optional_int(body, key);
+        if (value && *value < 0) { bad_request(std::string(key) + " must be nonnegative", key); }
+        return value;
+    };
+    const std::optional<int> budget = read("reasoning_budget_tokens");
+    const std::optional<int> alias  = read("thinking_budget_tokens");
+    if (budget && alias && *budget != *alias) {
+        bad_request("conflicting reasoning_budget_tokens and thinking_budget_tokens values",
+                    "reasoning_budget_tokens", "conflicting_thinking_budget");
+    }
+    if (const std::optional<int> value = budget ? budget : alias) {
+        output.thinking_budget = static_cast<std::uint32_t>(*value);
+    }
+}
+
 void parse_stream_options(const Json& body, OpenAIChatRequest& output) {
     output.stream = get_bool(body, "stream", false);
     if (!body.contains("stream_options") || body.at("stream_options").is_null()) { return; }
@@ -909,6 +928,7 @@ OpenAIChatRequest parse_chat_completion_request(const Json& body, const RequestL
     parse_response_observations(body, output);
     parse_output_limit(body, limits, output);
     parse_reasoning_effort(body, output.generation);
+    parse_thinking_budget(body, output.generation);
     const TemplateOptions template_options = parse_template_options(body);
     output.generation.enable_thinking      = template_options.enable_thinking;
     output.generation.preserve_thinking    = template_options.preserve_thinking;
