@@ -1,5 +1,6 @@
 #include "core/device.h"
 #include "core/tensor.h"
+#include "core/weight.h"
 #include "ops/linear/nvfp4/nvfp4_launch.h"
 #include "ops/linear_swiglu/nvfp4/nvfp4_linear_swiglu_qpn_split.cuh"
 

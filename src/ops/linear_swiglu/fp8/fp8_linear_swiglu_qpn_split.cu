@@ -1,5 +1,6 @@
 #include "core/device.h"
 #include "core/tensor.h"
+#include "core/weight.h"
 #include "ops/linear/fp8/fp8_launch.h"
 #include "ops/linear_swiglu/fp8/fp8_linear_swiglu_qpn_split.cuh"
 
