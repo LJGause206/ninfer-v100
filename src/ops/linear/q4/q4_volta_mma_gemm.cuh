@@ -67,7 +67,7 @@ struct Q4VoltaMmaSchedule {
 // `kDirect` is the one-split case, which after the split-K retune is what the widest and most
 // frequent shape (gate/up, n=34816) actually runs. With a single split each CTA owns its output
 // tile outright, so the whole fp32 apparatus -- workspace, zeroing memset, atomicAdd, narrowing
-// pass -- is pure overhead against a plain BF16 store. Same structure the W8 kernel is built on.
+// pass -- is pure overhead against a plain BF16 store. Same structure the Q8 kernel is built on.
 template <bool kDirect>
 __global__ __launch_bounds__(Q4VoltaMmaSchedule::kThreads, 8) void q4_volta_mma_gemm_kernel(
     const std::uint8_t* __restrict__ codes, const std::uint8_t* __restrict__ scales,

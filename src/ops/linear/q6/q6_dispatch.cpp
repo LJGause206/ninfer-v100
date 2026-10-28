@@ -1,3 +1,4 @@
+#include "core/weight.h"
 #include "ops/linear/q6/q6_dispatch.h"
 
 #include <stdexcept>
@@ -73,15 +74,14 @@ bool q6_launch_needs_volta_fallback(Q6Launch launch) noexcept {
 Q6Launch select_q6_launch(std::int32_t n, std::int32_t k, std::int32_t t, LinearPolicy policy) {
     switch (policy) {
     case LinearPolicy::A16Only:
-    case LinearPolicy::AllowA8: {
+    case LinearPolicy::AllowA8:
+    case LinearPolicy::AllowA4: {
         const Q6Launch launch = select_q6_a16_launch(n, k, t);
 #ifdef NINFER_VOLTA_BUILD
         if (q6_launch_needs_volta_fallback(launch)) { return launch_q6_simt_r8_c8; }
 #endif
         return launch;
     }
-    case LinearPolicy::AllowA4:
-        break;
     }
     throw std::invalid_argument("q6 linear: unsupported policy");
 }

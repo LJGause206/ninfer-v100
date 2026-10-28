@@ -2,22 +2,22 @@
 
 // Fused-dequant FP8 (E4M3) x BF16 GEMM on Volta tensor cores, quadpair-split-N form (sm_70 only).
 //
-// The third sibling of q4_volta_qpn_gemm.cuh and w8_volta_qpn_gemm.cuh, and the simplest of the
+// The third sibling of q4_volta_qpn_gemm.cuh and q8_volta_qpn_gemm.cuh, and the simplest of the
 // three. Same geometry, same fragment maps, same one-barrier structure: the four quadpairs of a
 // warp split N, share a single 8x4 activation tile, and the CTA's four warps split K.
 //
 // It exists because the FP8 A16 SIMT family decays with T where the groupwise routes do not. The
 // QPN mapping keeps the curve step-flat by feeding an eight-row tile from one weight stream.
 //
-// Parity is not the target. FP8_E4M3FN_ROW_BF16S carries 8 bits per weight plus one BF16 per
-// output row (~8.0 bits/weight) against W8G32_F16S's 8 plus an FP16 per 32 (8.5), so this kernel
-// moving weights as efficiently as its W8 sibling should read about 6% *faster* than the W8
+// Parity is not the target. FP8_E4M3FN_ROW_BF16 carries 8 bits per weight plus one BF16 per
+// output row (~8.0 bits/weight) against Q8_G32_FP16's 8 plus an FP16 per 32 (8.5), so this kernel
+// moving weights as efficiently as its Q8 sibling should read about 6% *faster* than the Q8
 // numbers above.
 //
-// Two FP8 specifics, and both make it cheaper than the W8 sibling rather than dearer:
+// Two FP8 specifics, and both make it cheaper than the Q8 sibling rather than dearer:
 //
 //   - The scale is per output row, not per group of 32. It is loaded once before the K loop and
-//     applied in the epilogue, so the inner loop carries no scale multiply at all -- the W8
+//     applied in the epilogue, so the inner loop carries no scale multiply at all -- the Q8
 //     sibling pays an __hmul2 per four k, and a blocked scale load per 128 bytes of codes to keep
 //     its 79 MB scale plane off DRAM. There is no scale plane here worth the name: 2 bytes per
 //     output row.

@@ -3,13 +3,13 @@
 // Fused-dequant NVFP4 x BF16 GEMM on Volta tensor cores (mma.sync.m8n8k4), sm_70 only -- the
 // wide-T companion to nvfp4_volta_qpn_gemm.cuh, and the piece that was missing for prefill.
 //
-// Every QPN kernel this port ships (Q4/W8/FP8/NVFP4) is the *quadpair* assignment of
+// Every QPN kernel this port ships (Q4/Q8/FP8/NVFP4) is the *quadpair* assignment of
 // mma.sync.m8n8k4: T on the 8-row B axis, N on the 32-row A axis via four quadpairs, one
 // activation tile shared by all four. That is the right shape when T is small -- it amortizes
 // weight decode across many output columns. At prefill's T=2048 it is the wrong shape: QPN2
 // dispatches it as 64 separate 32-token launches (nvfp4_dispatch.cpp chunks at
 // kNvfp4VoltaQpnMaxTokens=32), so the weight is decoded and streamed *64 times* instead of once.
-// Q4/Q5/W8 never had this problem because they ship this other assignment too --
+// Q4/Q5/Q8 never had this problem because they ship this other assignment too --
 // q4_volta_mma_gemm.cuh -- T on the 32-row A axis, N on the 8-row B axis, one warp per 8 output
 // rows, dequantizing into *shared* memory once per K-pass and feeding mma.sync directly. NVFP4
 // never got the equivalent. This is that kernel.

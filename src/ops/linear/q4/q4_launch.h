@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/arena.h"
+#include "core/weight.h"
 #include "core/tensor.h"
 
 #include <cuda_runtime.h>
@@ -74,7 +75,7 @@ constexpr std::int32_t kVoltaQpnRowsPerTopKProducer = 32;
 
 void launch_q4_gemv_r4_w1_direct(const Tensor& x, const Weight& w, Tensor& out,
                                  cudaStream_t stream);
-void launch_q4_gemv_r1_w8_direct(const Tensor& x, const Weight& w, Tensor& out,
+void launch_q4_gemv_r1_q8_direct(const Tensor& x, const Weight& w, Tensor& out,
                                  cudaStream_t stream);
 void launch_q4_simt_r8_c4(const Tensor& x, const Weight& w, Tensor& out, cudaStream_t stream);
 void launch_q4_simt_r8_c8(const Tensor& x, const Weight& w, Tensor& out, cudaStream_t stream);

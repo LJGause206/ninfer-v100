@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/arena.h"
+#include "core/weight.h"
 #include "core/tensor.h"
 
 #include <cuda_runtime.h>
@@ -14,7 +15,7 @@ void launch_nvfp4_decode(const Tensor& x, const Weight& weight, Tensor& out, cud
 void launch_nvfp4_small_t(const Tensor& x, const Weight& weight, Tensor& out, cudaStream_t stream);
 
 #ifdef NINFER_VOLTA_BUILD
-// Quadpair-split-N form (nvfp4_volta_qpn_gemm.cuh), the fourth sibling of the q4/w8/fp8 QPN
+// Quadpair-split-N form (nvfp4_volta_qpn_gemm.cuh), the fourth sibling of the q4/q8/fp8 QPN
 // kernels. The tile height is mirrored here because dispatch is host code and cannot see the
 // device header; the launcher static_asserts the two agree.
 inline constexpr std::int32_t kNvfp4VoltaQpnRowsPerTile = 8;

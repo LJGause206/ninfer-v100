@@ -1,4 +1,6 @@
+#include "core/weight.h"
 #include "ninfer/ops/attn_input_proj.h"
+#include "ninfer/ops/weight_input.h"
 
 #include "ops/direct_bf16_weight.h"
 #include "ops/input_projection_test_common.h"
@@ -6,8 +8,10 @@
 #include <cuda_runtime.h>
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <iostream>
+#include <optional>
 #include <span>
 #include <string>
 #include <thread>
@@ -30,6 +34,18 @@ constexpr ReductionCriterion kAttnInputProjA4Tolerance{0.16, 1.0 / 256.0, 0.16};
 // Retain the original seven grid points while stabilizing the distribution-level A4 criterion.
 constexpr std::int32_t kA4SampleRows = 31;
 constexpr std::int32_t kA8SampleRows = 31;
+
+WeightParent physical_parent(const Weight& weight) {
+    const std::array shape{static_cast<std::uint64_t>(weight.n),
+                           static_cast<std::uint64_t>(weight.k)};
+    return {weight_geometry(weight.qtype, weight.layout, shape),
+            static_cast<const std::byte*>(weight.payload), weight.weight_scale_divisor};
+}
+
+WeightView rows(const WeightParent& parent, std::uint64_t begin, std::uint64_t count) {
+    const auto k = parent.geometry.shape[1];
+    return {{count, k}, {{&parent, begin * k, (begin + count) * k}}};
+}
 
 int verify_output(std::string_view label, const GuardedBf16Tensor& output,
                   const quantized_weight::PackedWeight& weight, std::int32_t weight_row_offset,
@@ -91,9 +107,9 @@ int run_q4_q5() {
     constexpr std::int32_t kHidden = 5120;
     constexpr std::int32_t kParent = 7168;
     DevicePackedWeight query_key(
-        quantized_weight::make_patterned_weight(QType::Q4G64_F16S, kParent, kHidden, 103U));
+        quantized_weight::make_patterned_weight(QType::Q4_G64_FP16, kParent, kHidden, 103U));
     DevicePackedWeight gate_value(
-        quantized_weight::make_patterned_weight(QType::Q5G64_F16S, kParent, kHidden, 107U));
+        quantized_weight::make_patterned_weight(QType::Q5_G64_FP16, kParent, kHidden, 107U));
 
     int failures = 0;
     for (const std::int32_t tokens : {1, 2, 16, 17, 21, 48}) {
@@ -236,7 +252,7 @@ int run_bf16_target() {
     constexpr std::int32_t kParentRows = 14336;
     DeviceWeight parent(make_patterned(kParentRows, kHidden, 313U));
     int failures = 0;
-    if (ops::attn_input_proj_workspace_capacity_bytes(QType::BF16_CTRL, kParentRows, kHidden,
+    if (ops::attn_input_proj_workspace_capacity_bytes(QType::BF16, kParentRows, kHidden,
                                                       ops::LinearPolicy::A16Only, 1, 1024) != 0) {
         std::cerr << "BF16 attention input workspace interval is not zero-capacity\n";
         ++failures;
@@ -248,7 +264,8 @@ int run_bf16_target() {
 }
 
 int run_nvfp4_target_case(DevicePackedWeight& parent, std::int32_t tokens,
-                          ops::LinearPolicy policy = ops::LinearPolicy::A16Only) {
+                          ops::LinearPolicy policy = ops::LinearPolicy::A16Only,
+                          bool omit_divisors       = false) {
     constexpr std::int32_t kHidden = 5120;
     constexpr std::int32_t kQRows  = 6144;
     constexpr std::int32_t kKvRows = 1024;
@@ -269,7 +286,29 @@ int run_nvfp4_target_case(DevicePackedWeight& parent, std::int32_t tokens,
     const std::size_t capacity = ops::attn_input_proj_workspace_capacity_bytes(
         QType::NVFP4, 14336, kHidden, policy, tokens, tokens);
     DeviceArena workspace(std::max<std::size_t>(capacity, 256));
-    ops::attn_input_proj(x, parent.view(), q, g, k, v, policy, workspace, nullptr);
+    const auto physical = physical_parent(parent.view());
+    const auto qw = rows(physical, 0, 6144), kw = rows(physical, 6144, 1024);
+    const auto gw = rows(physical, 7168, 6144), vw = rows(physical, 13312, 1024);
+    const auto divisor      = parent.view().input_scale_divisor;
+    const float unused_step = ops::allows_a4(policy) ? 0.0F : 1.0F;
+    const auto auxiliary    = [&](int index) -> std::optional<float> {
+        return omit_divisors ? std::nullopt : std::optional(divisor + index * unused_step);
+    };
+    const auto prepared =
+        std::get<ops::SingleProjectionWeight>(ops::prepare_attn_input_proj_weights(
+            {qw, policy, auxiliary(0)}, {kw, policy, auxiliary(1)}, {gw, policy, auxiliary(2)},
+            {vw, policy, auxiliary(3)}));
+    if (policy == ops::LinearPolicy::AllowA8) {
+        const auto mixed =
+            std::get<ops::SingleProjectionWeight>(ops::prepare_attn_input_proj_weights(
+                {qw, ops::LinearPolicy::AllowA4, divisor}, {kw, policy, divisor + 1},
+                {gw, policy, divisor + 2}, {vw, policy, divisor + 3}));
+        if (mixed.policy != ops::LinearPolicy::AllowA8) {
+            throw std::runtime_error(
+                "NVFP4 combined Use lost its activation permission intersection");
+        }
+    }
+    ops::attn_input_proj(x, prepared.weight, q, g, k, v, prepared.policy, workspace, nullptr);
     cuda_synchronize();
 
     constexpr std::int32_t kKeyBegin   = kQRows;
@@ -306,8 +345,10 @@ int run_nvfp4_target() {
 
     int failures = 0;
     for (const std::int32_t tokens : {1, 2, 4, 8, 16, 20, 32, 33}) {
-        failures += run_nvfp4_target_case(parent, tokens);
+        failures += run_nvfp4_target_case(parent, tokens, ops::LinearPolicy::A16Only, tokens == 1);
     }
+    failures += run_nvfp4_target_case(parent, 4, ops::LinearPolicy::AllowA8);
+    failures += run_nvfp4_target_case(parent, 4, ops::LinearPolicy::AllowA8, true);
 #ifndef NINFER_VOLTA_BUILD
     failures += run_nvfp4_target_case(parent, 4, ops::LinearPolicy::AllowA4);
     failures += run_nvfp4_target_case(parent, 17, ops::LinearPolicy::AllowA4);
@@ -339,7 +380,7 @@ int run_fp8_target_case(DevicePackedWeight& parent, std::int32_t tokens, ops::Li
         ops::attn_input_proj(x, parent.view(), q, g, k, v, nullptr);
     } else {
         const std::size_t capacity = ops::attn_input_proj_workspace_capacity_bytes(
-            QType::FP8_E4M3FN_ROW_BF16S, kRows, kHidden, policy, tokens, tokens);
+            QType::FP8_E4M3FN_ROW_BF16, kRows, kHidden, policy, tokens, tokens);
         DeviceArena workspace(std::max<std::size_t>(capacity, 256));
         ops::attn_input_proj(x, parent.view(), q, g, k, v, policy, workspace, nullptr);
     }
@@ -372,7 +413,7 @@ int run_fp8_target() {
     constexpr std::int32_t kHidden = 5120;
     constexpr std::int32_t kRows   = 14336;
     DevicePackedWeight parent(
-        quantized_weight::make_patterned_weight(QType::FP8_E4M3FN_ROW_BF16S, kRows, kHidden, 349U));
+        quantized_weight::make_patterned_weight(QType::FP8_E4M3FN_ROW_BF16, kRows, kHidden, 349U));
 #ifdef NINFER_VOLTA_BUILD
     parent.prepack_fp8();
 #endif
@@ -380,19 +421,19 @@ int run_fp8_target() {
     int failures = 0;
 #ifndef NINFER_VOLTA_BUILD
     const std::size_t one = ops::attn_input_proj_workspace_capacity_bytes(
-        QType::FP8_E4M3FN_ROW_BF16S, kRows, kHidden, ops::LinearPolicy::AllowA8, 1, 1);
+        QType::FP8_E4M3FN_ROW_BF16, kRows, kHidden, ops::LinearPolicy::AllowA8, 1, 1);
     const std::size_t ten = ops::attn_input_proj_workspace_capacity_bytes(
-        QType::FP8_E4M3FN_ROW_BF16S, kRows, kHidden, ops::LinearPolicy::AllowA8, 10, 10);
+        QType::FP8_E4M3FN_ROW_BF16, kRows, kHidden, ops::LinearPolicy::AllowA8, 10, 10);
     const std::size_t eleven = ops::attn_input_proj_workspace_capacity_bytes(
-        QType::FP8_E4M3FN_ROW_BF16S, kRows, kHidden, ops::LinearPolicy::AllowA8, 11, 11);
+        QType::FP8_E4M3FN_ROW_BF16, kRows, kHidden, ops::LinearPolicy::AllowA8, 11, 11);
     const std::size_t forty_eight = ops::attn_input_proj_workspace_capacity_bytes(
-        QType::FP8_E4M3FN_ROW_BF16S, kRows, kHidden, ops::LinearPolicy::AllowA8, 48, 48);
+        QType::FP8_E4M3FN_ROW_BF16, kRows, kHidden, ops::LinearPolicy::AllowA8, 48, 48);
     const std::size_t hot_interval = ops::attn_input_proj_workspace_capacity_bytes(
-        QType::FP8_E4M3FN_ROW_BF16S, kRows, kHidden, ops::LinearPolicy::AllowA8, 1, 48);
+        QType::FP8_E4M3FN_ROW_BF16, kRows, kHidden, ops::LinearPolicy::AllowA8, 1, 48);
     const std::size_t exact_1024 = ops::attn_input_proj_workspace_capacity_bytes(
-        QType::FP8_E4M3FN_ROW_BF16S, kRows, kHidden, ops::LinearPolicy::AllowA8, 1024, 1024);
+        QType::FP8_E4M3FN_ROW_BF16, kRows, kHidden, ops::LinearPolicy::AllowA8, 1024, 1024);
     const std::size_t a16 = ops::attn_input_proj_workspace_capacity_bytes(
-        QType::FP8_E4M3FN_ROW_BF16S, kRows, kHidden, ops::LinearPolicy::A16Only, 1, 2048);
+        QType::FP8_E4M3FN_ROW_BF16, kRows, kHidden, ops::LinearPolicy::A16Only, 1, 2048);
     if (one != 0 || ten != 0 || eleven == 0 || forty_eight <= eleven ||
         hot_interval != forty_eight || exact_1024 <= forty_eight || a16 != 0) {
         std::cerr << "FP8 attention input workspace interval contract mismatch\n";
@@ -409,7 +450,7 @@ int run_fp8_target() {
     return failures;
 }
 
-int run_w8_target_case(DevicePackedWeight& parent, std::int32_t tokens) {
+int run_q8_target_case(DevicePackedWeight& parent, std::int32_t tokens) {
     constexpr std::int32_t kHidden      = 2048;
     constexpr std::int32_t kQRows       = 4096;
     constexpr std::int32_t kKvRows      = 512;
@@ -429,7 +470,7 @@ int run_w8_target_case(DevicePackedWeight& parent, std::int32_t tokens) {
     ops::attn_input_proj(x, parent.view(), q, g, k, v, nullptr);
     cuda_synchronize();
 
-    const std::string suffix = " W8 target A16 T=" + std::to_string(tokens);
+    const std::string suffix = " Q8 target A16 T=" + std::to_string(tokens);
     int failures             = 0;
     failures += verify_output("attn q" + suffix, query, parent.host, 0, kQRows, activation, kHidden,
                               tokens);
@@ -444,18 +485,18 @@ int run_w8_target_case(DevicePackedWeight& parent, std::int32_t tokens) {
     return failures;
 }
 
-int run_w8_target() {
+int run_q8_target() {
     constexpr std::int32_t kHidden = 2048;
     DevicePackedWeight parent(
-        quantized_weight::make_patterned_weight(QType::W8G32_F16S, 9216, kHidden, 211U));
+        quantized_weight::make_patterned_weight(QType::Q8_G32_FP16, 9216, kHidden, 211U));
     int failures = 0;
     for (const std::int32_t tokens : {1, 2, 17, 48, 64, 65, 129}) {
-        failures += run_w8_target_case(parent, tokens);
+        failures += run_q8_target_case(parent, tokens);
     }
     return failures;
 }
 
-int run_w8_companion_case(DevicePackedWeight& parent, std::int32_t tokens) {
+int run_q8_companion_case(DevicePackedWeight& parent, std::int32_t tokens) {
     constexpr std::int32_t kHidden      = 2048;
     constexpr std::int32_t kQRows       = 4096;
     constexpr std::int32_t kKvRows      = 1024;
@@ -473,7 +514,7 @@ int run_w8_companion_case(DevicePackedWeight& parent, std::int32_t tokens) {
     ops::attn_input_proj(x, parent.view(), q, k, v, nullptr);
     cuda_synchronize();
 
-    const std::string suffix = " W8 companion A16 T=" + std::to_string(tokens);
+    const std::string suffix = " Q8 companion A16 T=" + std::to_string(tokens);
     int failures             = 0;
     failures += verify_output("attn q" + suffix, query, parent.host, 0, kQRows, activation, kHidden,
                               tokens);
@@ -486,14 +527,14 @@ int run_w8_companion_case(DevicePackedWeight& parent, std::int32_t tokens) {
     return failures;
 }
 
-int run_w8_companion() {
+int run_q8_companion() {
     constexpr std::int32_t kHidden = 2048;
     DevicePackedWeight parent(
-        quantized_weight::make_patterned_weight(QType::W8G32_F16S, 6144, kHidden, 307U));
+        quantized_weight::make_patterned_weight(QType::Q8_G32_FP16, 6144, kHidden, 307U));
     int failures = 0;
     // One public numerical case from every registered companion A16 T region.
     for (const std::int32_t tokens : {1, 2, 97, 193, 289, 321, 385, 449}) {
-        failures += run_w8_companion_case(parent, tokens);
+        failures += run_q8_companion_case(parent, tokens);
     }
     return failures;
 }
@@ -511,8 +552,8 @@ int main() {
     failures += run_bf16_target();
     failures += run_nvfp4_target();
     failures += run_fp8_target();
-    failures += run_w8_target();
-    failures += run_w8_companion();
+    failures += run_q8_target();
+    failures += run_q8_companion();
     std::cout << (failures == 0 ? "OK" : "FAIL") << " attn_input_proj\n";
     return failures == 0 ? 0 : 1;
 }

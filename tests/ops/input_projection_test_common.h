@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/weight.h"
 #include "ops/op_tester.h"
 #include "ops/quantized_weight.h"
 #include "ops/linear/fp8/fp8_prepack_sm70.h"

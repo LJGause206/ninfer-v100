@@ -1,3 +1,4 @@
+#include "core/weight.h"
 #include "ops/linear/linear_test_common.h"
 
 #include "core/arena.h"
@@ -206,30 +207,30 @@ int compare_output(std::string_view label, std::span<const double> actual,
 
 } // namespace
 
-quantized_weight::PackedWeight make_q4g64_f16s_weight(std::int32_t n, std::int32_t k,
-                                                      std::uint32_t seed) {
-    return quantized_weight::make_patterned_weight(QType::Q4G64_F16S, n, k, seed,
+quantized_weight::PackedWeight make_q4_g64_fp16_weight(std::int32_t n, std::int32_t k,
+                                                       std::uint32_t seed) {
+    return quantized_weight::make_patterned_weight(QType::Q4_G64_FP16, n, k, seed,
                                                    {quantized_weight::RowSplitScalePattern::Small,
                                                     quantized_weight::RowSplitCodePattern::Hashed});
 }
 
-quantized_weight::PackedWeight make_q5g64_f16s_weight(std::int32_t n, std::int32_t k,
-                                                      std::uint32_t seed) {
-    return quantized_weight::make_patterned_weight(QType::Q5G64_F16S, n, k, seed,
+quantized_weight::PackedWeight make_q5_g64_fp16_weight(std::int32_t n, std::int32_t k,
+                                                       std::uint32_t seed) {
+    return quantized_weight::make_patterned_weight(QType::Q5_G64_FP16, n, k, seed,
                                                    {quantized_weight::RowSplitScalePattern::Small,
                                                     quantized_weight::RowSplitCodePattern::Hashed});
 }
 
-quantized_weight::PackedWeight make_q6g64_f16s_weight(std::int32_t n, std::int32_t k,
-                                                      std::uint32_t seed) {
-    return quantized_weight::make_patterned_weight(QType::Q6G64_F16S, n, k, seed,
+quantized_weight::PackedWeight make_q6_g64_fp16_weight(std::int32_t n, std::int32_t k,
+                                                       std::uint32_t seed) {
+    return quantized_weight::make_patterned_weight(QType::Q6_G64_FP16, n, k, seed,
                                                    {quantized_weight::RowSplitScalePattern::Small,
                                                     quantized_weight::RowSplitCodePattern::Hashed});
 }
 
-quantized_weight::PackedWeight make_w8g32_f16s_weight(std::int32_t n, std::int32_t k,
-                                                      std::uint32_t seed) {
-    return quantized_weight::make_patterned_weight(QType::W8G32_F16S, n, k, seed,
+quantized_weight::PackedWeight make_q8_g32_fp16_weight(std::int32_t n, std::int32_t k,
+                                                       std::uint32_t seed) {
+    return quantized_weight::make_patterned_weight(QType::Q8_G32_FP16, n, k, seed,
                                                    {quantized_weight::RowSplitScalePattern::Small,
                                                     quantized_weight::RowSplitCodePattern::Hashed});
 }
@@ -243,7 +244,7 @@ quantized_weight::PackedWeight make_nvfp4_weight(std::int32_t n, std::int32_t k,
 }
 
 quantized_weight::PackedWeight make_fp8_weight(std::int32_t n, std::int32_t k, std::uint32_t seed) {
-    return quantized_weight::make_patterned_weight(QType::FP8_E4M3FN_ROW_BF16S, n, k, seed);
+    return quantized_weight::make_patterned_weight(QType::FP8_E4M3FN_ROW_BF16, n, k, seed);
 }
 
 void cpu_linear_gemm_fp64(const float* weight, const float* activation, double* output,
@@ -317,7 +318,7 @@ int run_shape(std::string_view label, ActivationCompute activation_compute,
     device_weight.copy_from_host(host_weight.payload.data(), device_weight.bytes);
     Weight weight = host_weight.device_weight(device_weight.p);
 #ifdef NINFER_VOLTA_BUILD
-    if (weight.qtype == QType::FP8_E4M3FN_ROW_BF16S) {
+    if (weight.qtype == QType::FP8_E4M3FN_ROW_BF16) {
         ops::detail::fp8_prepack_qpn_sm70(weight);
     }
 #endif

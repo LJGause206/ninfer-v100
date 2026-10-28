@@ -214,7 +214,7 @@ __launch_bounds__(Schedule::kThreads, Schedule::kMinBlocksPerSm) void nvfp4_w4a4
 // 48KB static-shared cap -- a link-time failure independent of whether the mma-using
 // code path is ever reached (nvfp4 is permanently out of scope regardless -- no FP4
 // hardware on Volta -- see docs/v100.md). Same fix as
-// w8_rowsplit_gemm_medium_t_splitk.cuh: the whole body needs to be behind the guard,
+// q8_rowsplit_gemm_medium_t_splitk.cuh: the whole body needs to be behind the guard,
 // not just the mma calls within it.
 #if !defined(__CUDA_ARCH__) || __CUDA_ARCH__ >= 800
     static_assert((Geometry::kInputRows % Schedule::kBlockK) == 0);

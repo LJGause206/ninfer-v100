@@ -1,7 +1,7 @@
 #pragma once
 
 // Fused-dequant NVFP4 (E2M1 + E4M3 K16 block scale) x BF16 GEMM on Volta tensor cores,
-// quadpair-split-N form (sm_70 only). Fourth sibling of q4/w8/fp8_volta_qpn_gemm.cuh: same
+// quadpair-split-N form (sm_70 only). Fourth sibling of q4/q8/fp8_volta_qpn_gemm.cuh: same
 // geometry, same fragment maps, same one-barrier cross-warp K reduce. What changes is the decoder
 // and the scale cadence.
 //

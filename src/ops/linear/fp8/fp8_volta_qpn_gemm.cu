@@ -34,7 +34,7 @@ bool fp8_volta_qpn_supported(std::int32_t n, std::int32_t k, std::int32_t t) noe
     // 8 is the floor every shipped SPLITK choice (8 or 16) divides down to (see the launcher).
     if (k % S::kKPerBlock != 0) { return false; }
     if (k / S::kKPerBlock < 8) { return false; }
-    // Two 8-row A tiles cover T=9..16 in one pass over the weights. The W8 sibling rejected its
+    // Two 8-row A tiles cover T=9..16 in one pass over the weights. The Q8 sibling rejected its
     // two-tile form because the 32x8 fused route already absorbed those rows for free; FP8 has no
     // 32x8 route, so here the alternative is chunking -- reading the whole weight twice -- and the
     // second tile wins easily.

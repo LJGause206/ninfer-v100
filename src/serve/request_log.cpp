@@ -328,6 +328,19 @@ Json materialization_json(const ninfer::MaterializationDiagnostics& diagnostics)
         {"budget_exhausted", diagnostics.budget_exhausted},
         {"selected_degradation_units", diagnostics.selected_degradation_units},
         {"selected_maximal_fallback", diagnostics.selected_maximal_fallback},
+        {"initial_predicted_total_ns", diagnostics.initial_predicted_total_ns},
+        {"first_improvement_ns", diagnostics.first_improvement_ns
+                                     ? Json(*diagnostics.first_improvement_ns)
+                                     : Json(nullptr)},
+        {"incumbent_improvements", diagnostics.incumbent_improvements},
+        {"search_work", diagnostics.search_work},
+        {"search_granted_ns", diagnostics.search_granted_ns},
+        {"search_renewals", diagnostics.search_renewals},
+        {"search_discovery_used", diagnostics.search_discovery_used},
+        {"search_overshoot_ns", diagnostics.search_overshoot_ns},
+        {"search_stop_phase",
+         ninfer::materialization_search_phase_name(diagnostics.search_stop_phase)},
+        {"search_boundary_limited", diagnostics.search_boundary_limited},
     };
 }
 
@@ -444,13 +457,15 @@ std::string format_server_start_json(
                                                           {"default_preserve_thinking", options.preserve_thinking}};
     record["artifact"]                             = Json{{"path", options.artifact_path},
                                                           {"size_bytes", std::move(artifact_size)},
-                                                          {"target", load.target},
-                                                          {"weights_id", load.weights_id},
+                                                          {"architecture", load.architecture},
+                                                          {"name", load.model_name},
+                                                          {"formats", load.weight_formats},
+                                                          {"prefill_signature", load.prefill_signature},
                                                           {"bytes_read", load.artifact_bytes_read},
                                                           {"host_to_device_bytes", load.host_to_device_bytes},
                                                           {"peak_staging_bytes", load.peak_staging_bytes},
-                                                          {"tensor_count", load.tensor_count},
-                                                          {"resource_count", load.resource_count},
+                                                          {"device_object_count", load.device_object_count},
+                                                          {"host_object_count", load.host_object_count},
                                                           {"load_seconds", load.load_seconds},
                                                           {"upload_seconds", load.upload_seconds}};
     const ninfer::ContextCacheOptions& cache       = engine_options.context_cache;
@@ -483,8 +498,7 @@ std::string format_server_start_json(
                                    {"prefill_source", ninfer::context_cost_preset_source_name(
                                                           context_cost.prefill_source)},
                                    {"hardware_class", context_cost.hardware_class},
-                                   {"model_id", context_cost.model_id},
-                                   {"weights_id", context_cost.weights_id},
+                                   {"prefill_signature", context_cost.prefill_signature},
                                    {"preset_path", context_cost.preset_path.string()}}},
              {"context_cache",
               Json{{"enabled", cache.enabled},

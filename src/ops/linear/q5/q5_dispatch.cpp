@@ -1,3 +1,4 @@
+#include "core/weight.h"
 #include "ops/linear/q5/q5_dispatch.h"
 
 #include <stdexcept>
@@ -85,7 +86,8 @@ bool q5_launch_needs_volta_fallback(Q5Launch launch) noexcept {
 Q5Launch select_q5_launch(std::int32_t n, std::int32_t k, std::int32_t t, LinearPolicy policy) {
     switch (policy) {
     case LinearPolicy::A16Only:
-    case LinearPolicy::AllowA8: {
+    case LinearPolicy::AllowA8:
+    case LinearPolicy::AllowA4: {
         const Q5Launch launch = select_q5_a16_launch(n, k, t);
 #ifdef NINFER_VOLTA_BUILD
         // The exact split2/split4 routes are the best thing Q5 has on Volta, but the shared table
@@ -107,7 +109,7 @@ Q5Launch select_q5_launch(std::int32_t n, std::int32_t k, std::int32_t t, Linear
             if (split2 && t <= 15) { return launch_q5_simt_split2_exact; }
             if (split4 && t <= 10) { return launch_q5_simt_split4_exact; }
         }
-        // r4_c16 is kept for Q5 (unlike W8, where it was removed): Q5's r8_c8 is the weak kernel
+        // r4_c16 is kept for Q5 (unlike Q8, where it was removed): Q5's r8_c8 is the weak kernel
         // here, and dropping r4_c16 measured ~2x worse at T>=9 (mlp_down T=16 746us -> 1412us,
         // T=32 1412us -> 2808us). It only covers what the split routes above do not reach.
         if (t > 8 && t <= 32) { return launch_q5_simt_r4_c16; }
@@ -115,8 +117,6 @@ Q5Launch select_q5_launch(std::int32_t n, std::int32_t k, std::int32_t t, Linear
 #endif
         return launch;
     }
-    case LinearPolicy::AllowA4:
-        break;
     }
     throw std::invalid_argument("q5 linear: unsupported policy");
 }

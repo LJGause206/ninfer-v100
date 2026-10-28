@@ -64,9 +64,9 @@ __launch_bounds__(256, 6) __global__
                                const std::uint8_t* __restrict__ scales,
                                __nv_bfloat16* __restrict__ out, Epilogue epilogue = {},
                                RowPolicy row_policy = {}) {
-// Same ldmatrix/mma.m16n8k16 story as w8_small_t_mma_kernel, and genuinely decode-relevant
+// Same ldmatrix/mma.m16n8k16 story as q8_small_t_mma_kernel, and genuinely decode-relevant
 // once more (draft-head projection + linear_swiglu's fused gate/up, both now in scope with
-// MTP back in — see docs/v100.md). Unlike w8_small_t, there's no single drop-in SIMT
+// MTP back in — see docs/v100.md). Unlike q8_small_t, there's no single drop-in SIMT
 // replacement here (this kernel's callers need either a plain projection or a fused SwiGLU
 // combine that q4_rowsplit_gemm_simt_kernel doesn't natively do) — so the host callers
 // compose it from the existing, already-validated q4 SIMT kernel instead of calling this

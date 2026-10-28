@@ -25,7 +25,7 @@ struct ServeOptions {
     std::string host = "127.0.0.1";
     int port         = 8080;
     std::string api_key;                          // empty => no auth
-    std::optional<std::string> model_id_override; // unset => artifact identity.model_id
+    std::optional<std::string> model_id_override; // unset => artifact metadata.name
     std::string request_log_jsonl;                // empty => structured request logging disabled
     std::uint32_t max_context          = 8192;
     KvCapacityPolicy kv_capacity       = KvCapacityPolicy::explicit_capacity(8192);
@@ -67,7 +67,7 @@ struct ServeOptions {
 
 ServeOptions parse_serve_options(int argc, char** argv);
 std::string resolve_public_model_id(const ServeOptions& options,
-                                    std::string_view artifact_model_id);
+                                    std::string_view artifact_model_name);
 std::string serve_usage_text(const char* argv0);
 
 } // namespace ninfer::serve

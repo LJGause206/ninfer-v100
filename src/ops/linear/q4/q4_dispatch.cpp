@@ -1,3 +1,4 @@
+#include "core/weight.h"
 #include "ops/linear/q4/q4_dispatch.h"
 
 #include <stdexcept>
@@ -11,29 +12,29 @@ Q4Launch select_q4_a16_launch(std::int32_t n, std::int32_t k, std::int32_t t) {
     case 5120:
         switch (n) {
         case 1024:
-            if (t == 1) { return launch_q4_gemv_r1_w8_direct; }
+            if (t == 1) { return launch_q4_gemv_r1_q8_direct; }
             if (t <= 15) { return launch_q4_simt_r8_c4; }
             if (t == 16) { return launch_q4_simt_r8_c8; }
             return launch_q4_mma_r64_c128;
         case 4096:
-            if (t == 1) { return launch_q4_gemv_r1_w8_direct; }
+            if (t == 1) { return launch_q4_gemv_r1_q8_direct; }
             if (t <= 4) { return launch_q4_simt_r8_c4; }
             if (t <= 16) { return launch_q4_simt_r8_c8; }
             return launch_q4_mma_r64_c128;
         case 6144:
-            if (t == 1) { return launch_q4_gemv_r1_w8_direct; }
+            if (t == 1) { return launch_q4_gemv_r1_q8_direct; }
             if (t <= 7) { return launch_q4_simt_r8_c4; }
             if (t <= 16) { return launch_q4_simt_r8_c8; }
             return launch_q4_mma_r64_c128;
         case 7168:
-            if (t == 1) { return launch_q4_gemv_r1_w8_direct; }
+            if (t == 1) { return launch_q4_gemv_r1_q8_direct; }
             if (t <= 7) { return launch_q4_simt_r8_c4; }
             if (t == 8) { return launch_q4_simt_r8_c8; }
             if (t <= 15) { return launch_q4_simt_r8_c4; }
             if (t == 16) { return launch_q4_simt_r8_c8; }
             return launch_q4_mma_r64_c128;
         case 34816:
-            if (t == 1) { return launch_q4_gemv_r1_w8_direct; }
+            if (t == 1) { return launch_q4_gemv_r1_q8_direct; }
             if (t <= 4) { return launch_q4_simt_r8_c4; }
             if (t <= 16) { return launch_q4_simt_r8_c8; }
             return launch_q4_mma_r64_c128;
@@ -92,7 +93,7 @@ Q4Launch select_q4_a16_launch(std::int32_t n, std::int32_t k, std::int32_t t) {
 
 #ifdef NINFER_VOLTA_BUILD
 bool q4_launch_needs_volta_fallback(Q4Launch launch) noexcept {
-    return launch != launch_q4_gemv_r1_w8_direct && launch != launch_q4_gemv_r4_w1_direct &&
+    return launch != launch_q4_gemv_r1_q8_direct && launch != launch_q4_gemv_r4_w1_direct &&
            launch != launch_q4_draft_head_small_t && launch != launch_q4_simt_r8_c4 &&
            launch != launch_q4_simt_r8_c8;
 }
@@ -101,15 +102,14 @@ bool q4_launch_needs_volta_fallback(Q4Launch launch) noexcept {
 Q4Launch select_q4_launch(std::int32_t n, std::int32_t k, std::int32_t t, LinearPolicy policy) {
     switch (policy) {
     case LinearPolicy::A16Only:
-    case LinearPolicy::AllowA8: {
+    case LinearPolicy::AllowA8:
+    case LinearPolicy::AllowA4: {
         const Q4Launch launch = select_q4_a16_launch(n, k, t);
 #ifdef NINFER_VOLTA_BUILD
         if (q4_launch_needs_volta_fallback(launch)) { return launch_q4_simt_r8_c8; }
 #endif
         return launch;
     }
-    case LinearPolicy::AllowA4:
-        break;
     }
     throw std::invalid_argument("q4 linear: unsupported policy");
 }

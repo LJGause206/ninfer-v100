@@ -1,3 +1,4 @@
+#include "core/weight.h"
 #include "ops/linear_swiglu/nvfp4/nvfp4_linear_swiglu_plan.h"
 
 #include "core/layout.h"
@@ -34,10 +35,10 @@ constexpr std::int32_t kTmaBlockM = 256;
 
 Nvfp4LinearSwiGluRoute resolve_route(LinearPolicy policy, std::int32_t tokens) {
     if (tokens <= 0) { throw std::invalid_argument("nvfp4 linear_swiglu: T must be positive"); }
-    if (policy != LinearPolicy::A16Only && policy != LinearPolicy::AllowA4) {
-        throw std::invalid_argument("nvfp4 linear_swiglu admits only A16 or A4");
+    if (!valid_linear_policy(policy)) {
+        throw std::invalid_argument("nvfp4 linear_swiglu: invalid compute policy");
     }
-    if (policy == LinearPolicy::A16Only) {
+    if (policy == LinearPolicy::A16Only || policy == LinearPolicy::AllowA8) {
         if (tokens == 1) { return Nvfp4LinearSwiGluRoute::DecodeFusedA16; }
 #ifdef NINFER_VOLTA_BUILD
         // T>=2 on Volta: two independent QPN2 passes (one per weight half) into fp32 scratch, then
@@ -157,7 +158,7 @@ std::size_t nvfp4_linear_swiglu_workspace_capacity_bytes(LinearPolicy policy,
     }
     (void)resolve_route(policy, min_tokens);
     (void)resolve_route(policy, max_tokens);
-    if (policy == LinearPolicy::A16Only) {
+    if (policy == LinearPolicy::A16Only || policy == LinearPolicy::AllowA8) {
         // The fused A16 kernel (T==1 only) needs no transient; the baseline route needs its
         // projected plane; the Volta split route needs its two fp32 scratch planes. Checked via
         // resolve_route rather than a hardcoded token threshold since the boundary differs by

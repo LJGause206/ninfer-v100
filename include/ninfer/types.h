@@ -704,7 +704,8 @@ enum class MaterializationStopReason : std::uint8_t {
     TargetBudget,
     ExpansionCapacity,
     TimeBudget,
-    ValueOfNextExpansion,
+    InsufficientExpectedGain,
+    WorkBudget,
 };
 
 [[nodiscard]] inline constexpr const char*
@@ -720,10 +721,40 @@ materialization_stop_reason_name(MaterializationStopReason reason) noexcept {
         return "expansion_capacity";
     case MaterializationStopReason::TimeBudget:
         return "time_budget";
-    case MaterializationStopReason::ValueOfNextExpansion:
-        return "value_of_next_expansion";
+    case MaterializationStopReason::InsufficientExpectedGain:
+        return "insufficient_expected_gain";
+    case MaterializationStopReason::WorkBudget:
+        return "work_budget";
     }
     return "no_pressure";
+}
+
+enum class MaterializationSearchPhase : std::uint8_t {
+    None,
+    Setup,
+    Construction,
+    Assessment,
+    Expansion,
+    Refinement,
+};
+
+[[nodiscard]] inline constexpr const char*
+materialization_search_phase_name(MaterializationSearchPhase phase) noexcept {
+    switch (phase) {
+    case MaterializationSearchPhase::None:
+        return "none";
+    case MaterializationSearchPhase::Setup:
+        return "setup";
+    case MaterializationSearchPhase::Construction:
+        return "construction";
+    case MaterializationSearchPhase::Assessment:
+        return "assessment";
+    case MaterializationSearchPhase::Expansion:
+        return "expansion";
+    case MaterializationSearchPhase::Refinement:
+        return "refinement";
+    }
+    return "none";
 }
 
 struct MaterializationDiagnostics {
@@ -738,6 +769,17 @@ struct MaterializationDiagnostics {
     bool budget_exhausted                    = false;
     std::uint32_t selected_degradation_units = 0;
     bool selected_maximal_fallback           = false;
+
+    std::uint64_t initial_predicted_total_ns = 0;
+    std::optional<std::uint64_t> first_improvement_ns;
+    std::uint32_t incumbent_improvements         = 0;
+    std::uint64_t search_work                    = 0;
+    std::uint64_t search_granted_ns              = 0;
+    std::uint32_t search_renewals                = 0;
+    bool search_discovery_used                   = false;
+    std::uint64_t search_overshoot_ns            = 0;
+    MaterializationSearchPhase search_stop_phase = MaterializationSearchPhase::None;
+    bool search_boundary_limited                 = false;
 
     [[nodiscard]] friend constexpr bool
     operator==(const MaterializationDiagnostics&,
@@ -943,22 +985,22 @@ struct ContextCostSummary {
     ContextCostPresetSource transfer_source = ContextCostPresetSource::GenericDefault;
     ContextCostPresetSource prefill_source  = ContextCostPresetSource::GenericDefault;
     std::string hardware_class;
-    std::string model_id;
-    std::string weights_id;
+    std::string prefill_signature;
     std::filesystem::path preset_path;
 };
 
 struct LoadSummary {
-    std::string target;
-    std::string model_id;
-    std::string weights_id;
+    std::string architecture;
+    std::string model_name;
+    std::vector<std::string> weight_formats;
+    std::string prefill_signature;
     double load_seconds                = 0.0;
     double upload_seconds              = 0.0;
     std::uint64_t artifact_bytes_read  = 0;
     std::uint64_t host_to_device_bytes = 0;
     std::uint64_t peak_staging_bytes   = 0;
-    std::size_t tensor_count           = 0;
-    std::size_t resource_count         = 0;
+    std::size_t device_object_count    = 0;
+    std::size_t host_object_count      = 0;
     ContextCostSummary context_cost;
 };
 

@@ -1,3 +1,4 @@
+#include "core/weight.h"
 #include "ops/linear_add/fp8/fp8_linear_add_plan.h"
 
 #include "core/layout.h"
@@ -39,9 +40,7 @@ Fp8LinearAddRoute resolve_route(std::int32_t output_rows, std::int32_t input_row
         return Fp8LinearAddRoute::A16;
 #endif
     }
-    if (policy != LinearPolicy::AllowA8) {
-        throw std::invalid_argument("fp8 linear_add: unsupported policy");
-    }
+    if (!allows_a8(policy)) { throw std::invalid_argument("fp8 linear_add: unsupported policy"); }
     const std::int32_t first_a8 = input_rows == Fp8Residual6144Geometry::kInputRows ? 22 : 25;
     if (tokens >= first_a8) { return Fp8LinearAddRoute::A8; }
 #ifdef NINFER_VOLTA_BUILD

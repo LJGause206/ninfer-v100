@@ -259,7 +259,7 @@ docker run --rm \
 
 ## Capabilities and limits
 
-All registered model IDs support:
+The official artifacts provide the following capabilities, with optional components enabled at startup:
 
 - text generation with thinking and non-thinking prompt modes;
 - image, multi-image, video, and mixed multimodal messages;
@@ -283,7 +283,7 @@ The product boundary remains intentionally small:
 - no request preemption, priority/QoS, active-request swapping, weight offload, multi-GPU, or
   distributed serving;
 - one shared startup-fixed KV pool across active requests and retained prefixes;
-- no runtime model discovery or unregistered checkpoint fallback;
+- model architectures and format/shape combinations use explicitly implemented native paths;
 - parsed tool calls are returned to the client; NInfer does not execute tools;
 - the in-tree C++ headers are not distributed as an installed SDK.
 
@@ -299,6 +299,7 @@ capacities remain fixed for the process lifetime.
 - [HTTP serving](docs/serving.md)
 - [V100 qualification and performance](docs/v100.md)
 - [Perplexity evaluation](docs/perplexity.md)
+- [Weight conversion and custom recipes](docs/weight-conversion.md)
 - [Resource scheduling and context cache](docs/maintainer/resource-scheduling-and-context-cache.md)
 - [Serve TTFT benchmark](tools/bench/ttft/)
 - [CLI examples](examples/cli/)

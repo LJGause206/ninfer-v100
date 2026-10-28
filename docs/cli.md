@@ -1,6 +1,6 @@
 # NInfer CLI
 
-`build/apps/ninfer` runs one request against one registered `.ninfer` artifact. Build NInfer and
+`build/apps/ninfer` runs one request against one v3 `.ninfer` artifact. Build NInfer and
 download an artifact using the [project README](../README.md) before following this guide.
 
 The examples use Qwen3.8-27B NVFP4 with FP8 KV storage.
@@ -185,7 +185,8 @@ For Qwen3.8-27B artifacts containing the DFlash2 companion weights, select
 DFlash2 accepts every draft count from 1 through 15; seven is the checkpoint recommendation.
 Both `groupwise-int` and `nvfp4` artifacts use the same Engine route, including CUDA Graph,
 concurrent requests, sampling penalties, and prefix reuse. An artifact without the companion
-weights reports a missing DFlash2 capability when selected.
+weights reports a missing DFlash2 component when selected. Vision, MTP and DFlash follow the same
+rule: their weights are required only when that component is enabled at startup.
 
 Only one speculative backend can be enabled per Engine. The published [performance results](performance.md)
 use MTP with three draft tokens and DFlash with seven draft tokens (block length eight), both with
@@ -221,8 +222,8 @@ The table lists executable defaults. The examples above select FP8 KV and MTP3.
 | `--frequency-penalty F` | frequency-penalty override | registered model/mode default (`0`) |
 | `--seed N` | sampling seed | `0` |
 
-When a sampling flag is omitted, Engine selects the official general-task preset registered for
-the loaded model and the rendered prompt mode. The current presets are:
+When a sampling flag is omitted, Engine selects the general-task preset for the loaded architecture
+and rendered prompt mode. The current official models use:
 
 | Model | Prompt mode | Temperature | Top-p | Top-k | Min-p | Presence penalty |
 |---|---|---:|---:|---:|---:|---:|
@@ -244,10 +245,10 @@ Run `./build/apps/ninfer --help` for the exact option contract.
 
 ## Context and memory
 
-The registered model IDs have a native context limit of 262,144 tokens. The practical allocation
+The official artifacts have a native context limit of 262,144 tokens. The practical allocation
 on one RTX 5090 depends on the selected artifact, media workload, output budget, and KV-cache type.
-Artifact identity selects the weight profile;
-`--kv-dtype` selects runtime KV storage. The prepared prompt must fit
+The artifact describes its model configuration and weight representations;
+`--kv-dtype` independently selects runtime KV storage. The prepared prompt must fit
 `--max-context`; generation stops at the remaining context capacity when necessary.
 `--kv-capacity N` controls the shared physical Main Text KV pool independently and is rounded up to
 the 64-token page size. `--kv-capacity auto` loads the selected weights, measures the remaining GPU

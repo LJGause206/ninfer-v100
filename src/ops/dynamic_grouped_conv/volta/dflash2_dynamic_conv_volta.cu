@@ -96,7 +96,7 @@ __global__ void dflash2_dynamic_conv_finish_add_kernel(
 }
 
 
-// The W_delta control projection is BF16_CTRL [1280, 5120]; the fork general BF16 linear only
+// The W_delta control projection is BF16 [1280, 5120]; the fork general BF16 linear only
 // admits a few fixed shapes, so a small dedicated matvec covers it. One block per (row, col).
 __global__ void dflash2_bf16_matvec_kernel(const __nv_bfloat16* __restrict__ w,
                                            const __nv_bfloat16* __restrict__ x, int n_rows, int k,
@@ -121,7 +121,7 @@ __global__ void dflash2_bf16_matvec_kernel(const __nv_bfloat16* __restrict__ w,
 // scalar fallback launches one CTA per (row, position), rereading every weight row eight times.
 // This route keeps all eight dot products in one CTA: each weight is loaded once, activations are
 // shared by cache, and the reduction tree matches the fallback's four-warp block reduction.
-__global__ __launch_bounds__(128, 4) void dflash2_bf16_control_w8_kernel(
+__global__ __launch_bounds__(128, 4) void dflash2_bf16_control_q8_kernel(
     const __nv_bfloat16* __restrict__ w, const __nv_bfloat16* __restrict__ x,
     __nv_bfloat16* __restrict__ out) {
     constexpr int kRows = 1280;
@@ -175,7 +175,7 @@ void dflash2_bf16_control_projection_launch(const __nv_bfloat16* w, const __nv_b
                                            int n_rows, int k, int cols, __nv_bfloat16* out,
                                            cudaStream_t stream) {
     if (n_rows == 1280 && k == 5120 && cols == 8) {
-        dflash2_bf16_control_w8_kernel<<<n_rows, 128, 0, stream>>>(w, x, out);
+        dflash2_bf16_control_q8_kernel<<<n_rows, 128, 0, stream>>>(w, x, out);
         CUDA_CHECK(cudaGetLastError());
         return;
     }

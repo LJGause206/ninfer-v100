@@ -1,3 +1,4 @@
+#include "core/weight.h"
 #include "ninfer/ops/context_kv_materialize.h"
 
 #include "core/layout.h"
@@ -40,7 +41,7 @@ void require_weight(const Weight& weight, const char* name) {
         static_cast<std::uint64_t>(kKVSize) * static_cast<std::uint64_t>(kHidden);
     constexpr std::uint64_t kScaleBytes =
         static_cast<std::uint64_t>(kKVSize) * static_cast<std::uint64_t>(kHidden / 32) * 2U;
-    if (weight.qtype != QType::W8G32_F16S || weight.layout != QuantLayout::RowSplit ||
+    if (weight.qtype != QType::Q8_G32_FP16 || weight.layout != QuantLayout::RowSplit ||
         weight.scale_dtype != DType::FP16 || weight.group != 32 || weight.group_size != 32 ||
         weight.ndim != 2 || weight.n != kKVSize || weight.k != kHidden ||
         weight.shape[0] != kKVSize || weight.shape[1] != kHidden ||
@@ -100,7 +101,7 @@ std::size_t context_kv_materialize_workspace_capacity_bytes(std::int32_t batch_s
                                                             std::int32_t min_width,
                                                             std::int32_t max_width) {
     require_interval(batch_size, min_width, max_width);
-    // sm_70 port: composed from general W8 linear + head rmsnorm + rope + cyclic append, one
+    // sm_70 port: composed from general Q8 linear + head rmsnorm + rope + cyclic append, one
     // layer at a time under a scoped sub-arena, so the peak is a single layer's three BF16
     // [1024, max_width*B] scratch tensors.
     WorkspaceLayoutBuilder layout;
@@ -142,7 +143,7 @@ void context_kv_materialize(
 
     if (envelope.max_count == 0) return;
 
-    // sm_70 port: no fused kernel yet. Compose the five layers from the general W8 projection,
+    // sm_70 port: no fused kernel yet. Compose the five layers from the general Q8 projection,
     // per-head RMSNorm, 1-D RoPE and the cyclic-prefix append -- exactly the unfused reference
     // in the header's formula. One layer at a time keeps the workspace to a single layer.
     const std::int32_t width_columns = width * batch;

@@ -10,8 +10,8 @@
 
 #include "ops/context_kv_materialize/launch.h"
 #include "ops/dynamic_grouped_conv/bf16/bf16_dynamic_grouped_conv_prepare_kernels.h"
-#include "ops/dynamic_grouped_conv/w8/w8_dynamic_grouped_conv_add_kernels.h"
-#include "ops/linear/w8/w8_feature.h"
+#include "ops/dynamic_grouped_conv/q8/q8_dynamic_grouped_conv_add_kernels.h"
+#include "ops/linear/q8/q8_feature.h"
 #include "ops/rmsnorm_rope/launch.h"
 
 #include <stdexcept>
@@ -33,10 +33,10 @@ void bf16_dynamic_grouped_conv_prepare_reduce_launch(DynamicConvPrepareRoute, co
                                                      const float*, Tensor&, Tensor&, cudaStream_t) {
     unported("dynamic_grouped_conv_prepare_reduce");
 }
-void w8_dynamic_grouped_conv_add_materialized_launch(W8DynamicConvAddSchedule, const Tensor&,
+void q8_dynamic_grouped_conv_add_materialized_launch(Q8DynamicConvAddSchedule, const Tensor&,
                                                      const Weight&, const Tensor&, const Tensor&,
                                                      Tensor&, Tensor&, cudaStream_t) {
-    unported("w8_dynamic_grouped_conv_add_materialized");
+    unported("q8_dynamic_grouped_conv_add_materialized");
 }
 void context_kv_materialize_launch(
     const Tensor&, const Tensor&, const Tensor&, const Tensor&,
@@ -44,14 +44,14 @@ void context_kv_materialize_launch(
     ContextKVMaterializeExecutionEnvelope, ContextKVMaterializeRoute, const Tensor&, cudaStream_t) {
     unported("context_kv_materialize");
 }
-void launch_w8_feature_small_t(const Tensor&, const Weight&, Tensor&, cudaStream_t) {
-    unported("w8_feature_small_t");
+void launch_q8_feature_small_t(const Tensor&, const Weight&, Tensor&, cudaStream_t) {
+    unported("q8_feature_small_t");
 }
-void launch_w8_feature_r16_c64(const Tensor&, const Weight&, Tensor&, cudaStream_t) {
-    unported("w8_feature_r16_c64");
+void launch_q8_feature_r16_c64(const Tensor&, const Weight&, Tensor&, cudaStream_t) {
+    unported("q8_feature_r16_c64");
 }
-void launch_w8_feature_r32_c64(const Tensor&, const Weight&, Tensor&, cudaStream_t) {
-    unported("w8_feature_r32_c64");
+void launch_q8_feature_r32_c64(const Tensor&, const Weight&, Tensor&, cudaStream_t) {
+    unported("q8_feature_r32_c64");
 }
 void rmsnorm_rope_pair_launch(const Tensor&, const Tensor&, const Tensor&, Tensor&, Tensor&,
                               int, cudaStream_t) {

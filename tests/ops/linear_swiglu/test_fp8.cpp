@@ -1,3 +1,4 @@
+#include "core/weight.h"
 #include "ops/linear_swiglu/linear_swiglu_test_common.h"
 
 #include <array>
@@ -14,12 +15,12 @@ int main() {
         int failures = 0;
         failures += run_profile(
             "LinearSwiGLU FP8_A16",
-            {QType::FP8_E4M3FN_ROW_BF16S, 34816, 5120, 17408, 1811U, ActivationCompute::A16},
+            {QType::FP8_E4M3FN_ROW_BF16, 34816, 5120, 17408, 1811U, ActivationCompute::A16},
             kA16Cases);
 #ifndef NINFER_VOLTA_BUILD
         failures += run_profile(
             "LinearSwiGLU FP8_A8",
-            {QType::FP8_E4M3FN_ROW_BF16S, 34816, 5120, 17408, 1813U, ActivationCompute::A8},
+            {QType::FP8_E4M3FN_ROW_BF16, 34816, 5120, 17408, 1813U, ActivationCompute::A8},
             kA8Cases);
 #endif
         std::cout << (failures == 0 ? "OK" : "FAIL") << " LinearSwiGLU FP8 correctness\n";
