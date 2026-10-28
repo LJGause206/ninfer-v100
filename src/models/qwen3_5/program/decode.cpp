@@ -499,10 +499,10 @@ ProgramImpl::decode_mtp_batch(std::span<const std::uint32_t> lanes,
         }
     }
 
-    const std::uint32_t verify_k   = use_lookup ? qwen3_5::kMtpLookupMaximumDrafts : draft_window;
-    const std::uint32_t proposal_k = use_lookup ? 1U : draft_window;
-    const std::uint32_t width      = verify_k + 1;
-    qwen3_5::MtpDecodeState& frame = use_lookup ? *io.mtp_lookup_decode : *io.mtp_decode;
+    const std::uint32_t verify_k    = use_lookup ? qwen3_5::kMtpLookupMaximumDrafts : draft_window;
+    const std::uint32_t proposal_k  = use_lookup ? 1U : draft_window;
+    const std::uint32_t width       = verify_k + 1;
+    qwen3_5::MtpDecodeState& frame  = use_lookup ? *io.mtp_lookup_decode : *io.mtp_decode;
     DecodeGraphFamily& graph_family = use_lookup ? mtp_lookup_graphs : mtp_graphs;
 
     const auto started = Clock::now();
@@ -543,10 +543,10 @@ ProgramImpl::decode_mtp_batch(std::span<const std::uint32_t> lanes,
             mtp_host_ingress->current_extents[row]      = static_cast<std::int32_t>(extent);
             mtp_host_ingress->target_valid_columns[row] = static_cast<std::int32_t>(extent + 1);
             for (std::uint32_t j = 0; j < verify_k; ++j) {
-                const TokenId proposal = use_lookup ? lookup_drafts[row][j]
-                                                    : (j < sequence.mtp_draft_count
-                                                           ? sequence.mtp_drafts[j]
-                                                           : sequence.ledger.back());
+                const TokenId proposal =
+                    use_lookup ? lookup_drafts[row][j]
+                               : (j < sequence.mtp_draft_count ? sequence.mtp_drafts[j]
+                                                               : sequence.ledger.back());
                 mtp_host_ingress->current_drafts[row * verify_k + j] =
                     j < extent ? proposal : sequence.ledger.back();
             }
@@ -568,17 +568,16 @@ ProgramImpl::decode_mtp_batch(std::span<const std::uint32_t> lanes,
                                       std::min(capacity, frontier + extent + draft_window));
         }
 
-        execution::MtpBatchContext schedule_state{{device, parameters, work, state_images->linear(),
-                                                   use_lookup ? &*mtp_lookup_replay_records
-                                                              : &*replay_records,
-                                                   io, prefill_hidden, prefill_chunk,
-                                                   proposal_head},
-                                                  decoder->text_kv,
-                                                  *decoder->mtp_cache(),
-                                                  frame,
-                                                  *mtp_host_ingress,
-                                                  *mtp_host_egress,
-                                                  state_images->continuation_hidden_store()};
+        execution::MtpBatchContext schedule_state{
+            {device, parameters, work, state_images->linear(),
+             use_lookup ? &*mtp_lookup_replay_records : &*replay_records, io, prefill_hidden,
+             prefill_chunk, proposal_head},
+            decoder->text_kv,
+            *decoder->mtp_cache(),
+            frame,
+            *mtp_host_ingress,
+            *mtp_host_egress,
+            state_images->continuation_hidden_store()};
 
         mark_workspace_usage(workspace_plan.mtp_round);
         execution::mtp_decode_batch(schedule_state, static_cast<std::int32_t>(lanes.size()),

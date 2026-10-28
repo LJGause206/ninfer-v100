@@ -420,11 +420,14 @@ add_library(ninfer_model_loading STATIC
   models/qwen3_5/load/dflash2.cpp
   models/qwen3_5/load/resources.cpp
   models/qwen3_5/load/prepare.cpp
-  models/qwen3_5/load/volta_prepack.cpp
   models/qwen3_5/frontend/resources.cpp
   models/qwen3_5/frontend/tokenizer.cpp)
 ninfer_internal_includes(ninfer_model_loading)
 target_link_libraries(ninfer_model_loading PUBLIC ninfer_artifact ninfer_text ninfer_ops)
+if(CMAKE_CUDA_ARCHITECTURES STREQUAL "70")
+  # Load-time QPN permutation of the device weights consumed by the sm_70 decode kernels.
+  target_sources(ninfer_model_loading PRIVATE models/qwen3_5/load/volta_prepack.cpp)
+endif()
 
 add_library(ninfer_media_decode STATIC
   media/decode/decode.cpp)

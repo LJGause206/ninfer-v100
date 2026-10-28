@@ -113,16 +113,15 @@ void geometry_and_views() {
             "per-use native parameters changed the parent");
 
     // A Volta load-time QPN permutation keeps the parent's planes but invalidates row addressing.
-    WeightParent packed_fp8 = fp8_parent;
+    WeightParent packed_fp8        = fp8_parent;
     packed_fp8.volta_qpn_prepacked = true;
     const WeightView packed_complete{{256, 64}, {{&packed_fp8, 0, 256 * 64}}};
     const auto packed = native_weight(packed_complete);
     require(packed.layout == QuantLayout::VoltaQpnPrepacked && packed.qdata == fp8.data() &&
                 packed.scales == fp8.data() + 16384 && packed.scale_dtype == DType::BF16,
             "prepacked FP8 parent lost its layout or plane addresses");
-    rejects<std::invalid_argument>(
-        [&] { (void)weight_row_planes({&packed_fp8, 0, 128 * 64}); },
-        "prepacked parent admitted a row view");
+    rejects<std::invalid_argument>([&] { (void)weight_row_planes({&packed_fp8, 0, 128 * 64}); },
+                                   "prepacked parent admitted a row view");
     require(native_weight(WeightView{{256, 64}, {{&fp8_parent, 0, 256 * 64}}}).layout ==
                 QuantLayout::RowScale,
             "an unpacked parent changed layout");

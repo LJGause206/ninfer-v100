@@ -25,7 +25,7 @@ enum class QuantLayout : std::uint16_t {
     RowScale            = 3,
     // Volta port: a load-time permutation of an FP8 row-scaled or NVFP4 payload into the QPN
     // fragment order consumed by the sm_70 decode kernels. Never stored in an artifact.
-    VoltaQpnPrepacked   = 4,
+    VoltaQpnPrepacked = 4,
 };
 
 struct Weight {

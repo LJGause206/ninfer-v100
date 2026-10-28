@@ -67,9 +67,8 @@ void mtp_bridge_and_propose(PrefillContext& state, const Tensor& next_token,
     }
 }
 
-auto mtp_decode_batch_body(MtpBatchContext& state, std::int32_t batch_size,
-                           std::uint32_t verify_k, std::uint32_t proposal_k,
-                           MtpCausalAttentionEnvelopes envelopes) {
+auto mtp_decode_batch_body(MtpBatchContext& state, std::int32_t batch_size, std::uint32_t verify_k,
+                           std::uint32_t proposal_k, MtpCausalAttentionEnvelopes envelopes) {
     return [&state, batch_size, verify_k, proposal_k, envelopes] {
         if (batch_size <= 0 || batch_size > static_cast<std::int32_t>(kMaximumConcurrency) ||
             verify_k == 0 || verify_k > kMtpLookupMaximumDrafts || proposal_k == 0 ||
@@ -113,10 +112,8 @@ auto mtp_decode_batch_body(MtpBatchContext& state, std::int32_t batch_size,
         Tensor alignment_hidden   = frame.alignment_hidden.slice(2, 0, batch_size);
         Tensor ar_hidden          = frame.ar_hidden.slice(1, 0, batch_size);
         Tensor next_hidden        = frame.next_hidden.slice(1, 0, batch_size);
-        const std::int32_t ar_steps =
-            static_cast<std::int32_t>(std::max(proposal_k - 1U, 1U));
-        Tensor ar_positions =
-            frame.ar_positions.slice(0, 0, batch_size).slice(1, 0, ar_steps);
+        const std::int32_t ar_steps = static_cast<std::int32_t>(std::max(proposal_k - 1U, 1U));
+        Tensor ar_positions = frame.ar_positions.slice(0, 0, batch_size).slice(1, 0, ar_steps);
         Tensor ar_rope_positions =
             frame.ar_rope_positions.slice(0, 0, batch_size).slice(1, 0, ar_steps);
         Tensor ar_valid_columns =
@@ -214,9 +211,9 @@ void capture_mtp_decode_batch(MtpBatchContext& state, std::int32_t batch_size,
     capture_graph(state, definition, body);
 }
 
-void mtp_decode_batch(MtpBatchContext& state, std::int32_t batch_size,
-                      std::uint32_t verify_k, std::uint32_t proposal_k,
-                      MtpCausalAttentionEnvelopes envelopes, DecodeGraphExecutable* executable) {
+void mtp_decode_batch(MtpBatchContext& state, std::int32_t batch_size, std::uint32_t verify_k,
+                      std::uint32_t proposal_k, MtpCausalAttentionEnvelopes envelopes,
+                      DecodeGraphExecutable* executable) {
     auto body = mtp_decode_batch_body(state, batch_size, verify_k, proposal_k, envelopes);
     run_prepared(state, executable, body);
 }

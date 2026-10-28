@@ -291,25 +291,21 @@ void ProgramImpl::prepare_graphs() {
         }
     };
     const auto execution_core = [&](const GdnReplayRecords* records) {
-        return execution::ExecutionCore{device,
-                                        parameters,
-                                        work,
-                                        state_images->linear(),
-                                        records,
-                                        io,
-                                        prefill_hidden,
-                                        prefill_chunk,
-                                        proposal_head};
+        return execution::ExecutionCore{
+            device, parameters,     work,          state_images->linear(), records,
+            io,     prefill_hidden, prefill_chunk, proposal_head};
     };
 
     if (speculative_backend == SpeculativeBackend::None) {
         const auto ordinary_profiles = ordinary_graph_profiles(capacity);
         validate_graph_profiles(ordinary_profiles, capacity - 1, "ordinary");
         const std::uint32_t ordinary_batch_limit = max_concurrency;
-        execution::OrdinaryBatchContext ordinary_state{
-            execution_core(nullptr), decoder->text_kv,
-            *io.ordinary,          *ordinary_host_ingress,
-            *ordinary_host_egress, state_images->continuation_hidden_store()};
+        execution::OrdinaryBatchContext ordinary_state{execution_core(nullptr),
+                                                       decoder->text_kv,
+                                                       *io.ordinary,
+                                                       *ordinary_host_ingress,
+                                                       *ordinary_host_egress,
+                                                       state_images->continuation_hidden_store()};
         const GraphExecutionProfile code_warm = ordinary_profiles.front();
         prepare_representative(code_warm.min, 1);
         device.synchronize();
@@ -337,7 +333,8 @@ void ProgramImpl::prepare_graphs() {
     }
 
     if (speculative_backend == SpeculativeBackend::Mtp) {
-        const bool sparse_ffn = std::holds_alternative<MoeConfig>(parameters.model.config().text.ffn);
+        const bool sparse_ffn =
+            std::holds_alternative<MoeConfig>(parameters.model.config().text.ffn);
         const auto planned_profiles = mtp_graph_profiles(capacity, draft_window, sparse_ffn);
         validate_graph_profiles(planned_profiles, capacity - 1, "MTP");
         execution::MtpBatchContext mtp_state{execution_core(&*replay_records),

@@ -868,15 +868,13 @@ std::unique_ptr<SequencePlanImpl> build_sequence_candidate(const SequencePlannin
                 profiles,
                 [&](GraphExecutionProfile profile) {
                     const std::uint64_t final_visible = std::min<std::uint64_t>(
-                        impl->capacity,
-                        static_cast<std::uint64_t>(profile.max) +
-                            2ULL * qwen3_5::kMtpLookupMaximumDrafts);
+                        impl->capacity, static_cast<std::uint64_t>(profile.max) +
+                                            2ULL * qwen3_5::kMtpLookupMaximumDrafts);
                     return (final_visible <= 4096 ? 12ULL : 82ULL) * kMiB;
                 },
                 "MTP graph allowance");
-            impl->graph_allowance_bytes = checked_mul(2ULL * per_batch_allowance,
-                                                      impl->max_concurrency,
-                                                      "MTP exact-b graph allowance");
+            impl->graph_allowance_bytes = checked_mul(
+                2ULL * per_batch_allowance, impl->max_concurrency, "MTP exact-b graph allowance");
         } else {
             const auto class_allowance = [&](std::uint32_t batch_size) {
                 const auto profiles = dflash_graph_profiles(

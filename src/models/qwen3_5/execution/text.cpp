@@ -805,8 +805,7 @@ void TextContext::mtp_forward_decode_batch(const Tensor& ids, const Tensor& hidd
     const std::int32_t width = ids.ne[0];
     const std::int32_t batch = ids.ne[1];
     if (width <= 0 || width > static_cast<std::int32_t>(qwen3_5::kMtpLookupMaximumWidth) ||
-        batch <= 0 ||
-        batch > static_cast<std::int32_t>(kMaximumConcurrency)) {
+        batch <= 0 || batch > static_cast<std::int32_t>(kMaximumConcurrency)) {
         throw std::invalid_argument("MTP decode batch shape is outside the supported domain");
     }
     require_tensor_shape(ids, DType::I32, {width, batch}, "MTP decode batch ids");

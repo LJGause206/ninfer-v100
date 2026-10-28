@@ -87,10 +87,10 @@ std::vector<GraphExecutionProfile> mtp_graph_profiles(std::uint32_t capacity,
     ends.erase(std::unique(ends.begin(), ends.end()), ends.end());
     std::vector<GraphExecutionProfile> profiles = graph_profiles_through(capacity - 1, ends);
 #ifdef NINFER_VOLTA_BUILD
-    // On the MoE target the wide (K>5, including the K=15 lookup) verifier crosses Volta leaf-kernel
-    // topology boundaries that are not compatible with cudaGraphExecUpdate. Keep a resident
-    // executable for each frontier profile; the sequence plan accounts for these topology classes
-    // in its graph allowance.
+    // On the MoE target the wide (K>5, including the K=15 lookup) verifier crosses Volta
+    // leaf-kernel topology boundaries that are not compatible with cudaGraphExecUpdate. Keep a
+    // resident executable for each frontier profile; the sequence plan accounts for these topology
+    // classes in its graph allowance.
     if (sparse_ffn && draft_window > 5) {
         for (std::size_t i = 0; i < profiles.size(); ++i) {
             profiles[i].topology_class = static_cast<std::uint32_t>(i);

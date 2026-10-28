@@ -147,41 +147,34 @@ void complete_round_state_layout(LayoutBuilder& builder, RoundStateLayout& layou
             checked_i32(layout.spec.batch_capacity, "RoundState MTP batch capacity exceeds int32");
         const auto add_decode = [&](MtpDecodeStateLayout& decode, std::int32_t verify_columns,
                                     const char* prefix) {
-            decode.ingress = builder.add(sizeof(MtpDecodeIngress), kArenaAlign, prefix);
-            decode.egress  = builder.add(sizeof(MtpDecodeEgress), kArenaAlign, prefix);
+            decode.ingress    = builder.add(sizeof(MtpDecodeIngress), kArenaAlign, prefix);
+            decode.egress     = builder.add(sizeof(MtpDecodeEgress), kArenaAlign, prefix);
             decode.verify_ids = add_tensor(builder, DType::I32, {verify_columns, batch}, prefix);
             decode.target_positions =
                 add_tensor(builder, DType::I32, {verify_columns, batch}, prefix);
-            decode.target_argmax =
-                add_tensor(builder, DType::I32, {verify_columns, batch}, prefix);
-            decode.target_logits =
-                add_tensor(builder, DType::BF16,
-                           {layout.spec.output_rows, verify_columns, batch}, prefix);
-            decode.target_hidden = add_tensor(
-                builder, DType::BF16, {layout.spec.hidden, verify_columns, batch}, prefix);
+            decode.target_argmax = add_tensor(builder, DType::I32, {verify_columns, batch}, prefix);
+            decode.target_logits = add_tensor(
+                builder, DType::BF16, {layout.spec.output_rows, verify_columns, batch}, prefix);
+            decode.target_hidden = add_tensor(builder, DType::BF16,
+                                              {layout.spec.hidden, verify_columns, batch}, prefix);
             decode.target_continuation_hidden =
                 add_tensor(builder, DType::BF16, {layout.spec.hidden, batch}, prefix);
-            decode.proposal_logits = add_tensor(
-                builder, DType::BF16, {layout.spec.output_rows, batch}, prefix);
-            decode.alignment_ids =
-                add_tensor(builder, DType::I32, {verify_columns, batch}, prefix);
+            decode.proposal_logits =
+                add_tensor(builder, DType::BF16, {layout.spec.output_rows, batch}, prefix);
+            decode.alignment_ids = add_tensor(builder, DType::I32, {verify_columns, batch}, prefix);
             decode.alignment_hidden = add_tensor(
                 builder, DType::BF16, {layout.spec.hidden, verify_columns, batch}, prefix);
             decode.ar_hidden =
                 add_tensor(builder, DType::BF16, {layout.spec.hidden, batch}, prefix);
             decode.next_hidden =
                 add_tensor(builder, DType::BF16, {layout.spec.hidden, batch}, prefix);
-            decode.ar_positions =
-                add_tensor(builder, DType::I32, {batch, ar_steps}, prefix);
-            decode.ar_rope_positions =
-                add_tensor(builder, DType::I32, {batch, ar_steps}, prefix);
-            decode.ar_valid_columns =
-                add_tensor(builder, DType::I32, {batch, ar_steps}, prefix);
+            decode.ar_positions      = add_tensor(builder, DType::I32, {batch, ar_steps}, prefix);
+            decode.ar_rope_positions = add_tensor(builder, DType::I32, {batch, ar_steps}, prefix);
+            decode.ar_valid_columns  = add_tensor(builder, DType::I32, {batch, ar_steps}, prefix);
         };
         add_decode(layout.mtp_decode.emplace(), columns, "MTP decode frame");
         add_decode(layout.mtp_lookup_decode.emplace(),
-                   static_cast<std::int32_t>(kMtpLookupMaximumWidth),
-                   "MTP lookup decode frame");
+                   static_cast<std::int32_t>(kMtpLookupMaximumWidth), "MTP lookup decode frame");
     }
     if (is_masked_draft_backend(layout.spec.backend)) {
         layout.dflash_prefill.emplace().produced_count = i32(1, "DFlash prefill produced count");

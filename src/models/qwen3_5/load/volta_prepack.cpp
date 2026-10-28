@@ -1,7 +1,5 @@
 #include "models/qwen3_5/load/volta_prepack.h"
 
-#ifdef NINFER_VOLTA_BUILD
-
 #include "ops/linear/fp8/fp8_prepack_sm70.h"
 #include "ops/linear/nvfp4/nvfp4_prepack_sm70.h"
 
@@ -90,10 +88,10 @@ void prepack_volta_qpn(const ModelWeights& weights, std::span<const PendingWeigh
         if (!backing.has_device(handle)) { continue; }
         const WeightParent& parent = backing.device_parent(handle);
         const auto& geometry       = parent.geometry;
-        const bool fp8 = geometry.format == QType::FP8_E4M3FN_ROW_BF16 &&
+        const bool fp8             = geometry.format == QType::FP8_E4M3FN_ROW_BF16 &&
                          geometry.layout == QuantLayout::RowScale;
-        const bool nvfp4 = geometry.format == QType::NVFP4 &&
-                           geometry.layout == QuantLayout::BlockScaleK16M128x4;
+        const bool nvfp4 =
+            geometry.format == QType::NVFP4 && geometry.layout == QuantLayout::BlockScaleK16M128x4;
         if (!fp8 && !nvfp4) { continue; }
         const auto& eligible = fp8 ? selection.fp8 : selection.nvfp4;
         bool selected        = true;
@@ -115,5 +113,3 @@ void prepack_volta_qpn(const ModelWeights& weights, std::span<const PendingWeigh
 }
 
 } // namespace ninfer::models::qwen3_5::loading
-
-#endif // NINFER_VOLTA_BUILD

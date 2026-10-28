@@ -756,9 +756,9 @@ runtime::ExecutionTiming ProgramImpl::resolve_pending_raw(
         throw std::logic_error("speculative pending batch has no ReplaySSM records");
     }
     // A context-lookup MTP round verifies every row in the wider lookup frame.
-    const bool lookup_pending = speculative_backend == SpeculativeBackend::Mtp &&
-                                requests[lanes.front()].pending.row_stride ==
-                                    qwen3_5::kMtpLookupMaximumWidth;
+    const bool lookup_pending =
+        speculative_backend == SpeculativeBackend::Mtp &&
+        requests[lanes.front()].pending.row_stride == qwen3_5::kMtpLookupMaximumWidth;
     ops::GdnReplayFoldPlan& active_replay_fold =
         lookup_pending ? *mtp_lookup_replay_fold : *replay_fold;
 
@@ -838,8 +838,8 @@ runtime::ExecutionTiming ProgramImpl::resolve_pending_raw(
             Tensor selected;
             Tensor destinations;
             if (speculative_backend == SpeculativeBackend::Mtp && io.mtp_decode) {
-                qwen3_5::MtpDecodeState& frame = lookup_pending ? *io.mtp_lookup_decode
-                                                                : *io.mtp_decode;
+                qwen3_5::MtpDecodeState& frame =
+                    lookup_pending ? *io.mtp_lookup_decode : *io.mtp_decode;
                 selector_tensor                = frame.current_extents.slice(0, 0, batch);
                 hidden                         = frame.target_hidden.slice(2, 0, batch);
                 selected     = frame.target_continuation_hidden.slice(1, 0, batch);
