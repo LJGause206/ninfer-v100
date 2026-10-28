@@ -16,7 +16,20 @@ It supports text, image, and video input through a local CLI or OpenAI-/Anthropi
 | Qwen3.8-27B | `nvfp4` | `qwen3_8_27b_nvfp4.ninfer` | [Qwen3.8-27B NVFP4](https://huggingface.co/neroued/Qwen3.8-27B-nvfp4-NInfer) |
 | Qwen3.6-35B-A3B | `groupwise-int` | `qwen3_6_35b_a3b.ninfer` | [Qwen3.6-35B-A3B](https://huggingface.co/neroued/Qwen3.6-35B-A3B-NInfer) |
 
-Artifacts contain the exact model weights, tokenizer, chat template, and required media frontend resources.
+The Hugging Face downloads are v3 `.ninfer` artifacts. Each one carries the model configuration,
+encoded weights, logical bindings, a maintained Jinja chat template, and the media frontend
+resources. This port loads v3 artifacts only. An older v2 download is rejected at startup with an
+upgrade hint; convert it locally without downloading the weights again:
+
+```bash
+python3 tools/upgrade_ninfer_v2_to_v3.py \
+  models/qwen3_8_27b_nvfp4.ninfer \
+  models/qwen3_8_27b_nvfp4.v3.ninfer
+```
+
+The output must use a new path. Stored weight values and formats are preserved, and the upgrade
+installs the matching template from `tools/chat_templates/`. See
+[weight conversion](docs/weight-conversion.md#upgrade-an-existing-v2-artifact).
 
 ## Performance
 
@@ -97,9 +110,9 @@ QPN prepacking work was inspired by
 The 35B-A3B production DFlash round at a 2,048-token context uses K=3: **125.9 tok/s** and 3.8
 mean output tokens per round over ten measured rounds after two warmups.
 
-The current engine requires v3 artifacts. Existing official v2 downloads can be
-[upgraded locally](docs/weight-conversion.md#upgrade-an-existing-v2-artifact) without downloading
-the weights again.
+The measurements above were taken with the v2 artifacts and the pre-v3 runtime. The v3 artifacts
+carry the same encoded weight payloads, but the V100 tables have not been re-measured on this
+revision; see the [V100 port notes](docs/v100.md#v3-artifacts).
 
 ## Quick start
 
@@ -117,7 +130,7 @@ cmake -S . -B build-v100 -G Ninja -DCMAKE_BUILD_TYPE=Release \
 cmake --build build-v100 -j
 ```
 
-The same five `.ninfer` artifacts use the public Engine/CLI/serving routes. See the
+The same five v3 `.ninfer` artifacts use the public Engine/CLI/serving routes. See the
 [V100 port notes](docs/v100.md) for qualification and the preferred-GPU launcher.
 
 On Volta, loading an NVFP4 artifact repacks each dense MLP gate/up and down payload in place on the
@@ -228,7 +241,8 @@ correct/total counts and evaluation notes.
 
 GPU residency is fixed at process startup. `--spec` selects speculative decoding residency, and
 `--vision` selects Vision residency. DFlash is available for text-only Qwen3.6-35B-A3B execution,
-and DFlash2 for Qwen3.8-27B.
+and DFlash2 for Qwen3.8-27B. Prompts are rendered by the artifact's Jinja chat template;
+`--chat-template FILE` substitutes a local template (see the [CLI guide](docs/cli.md)).
 
 ## Docker
 
